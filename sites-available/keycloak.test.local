@@ -14,8 +14,8 @@ server {
     listen [::]:443 ssl http2;
     server_name keycloak.test.local;
 
-    ssl_certificate     /home/nik/projects/ssl-certs/test.local.crt;
-    ssl_certificate_key /home/nik/projects/ssl-certs/test.local.key;
+    ssl_certificate     /home/nikgl/projects/keycloak/certs/keycloak.test.local/keycloak.test.local.crt;
+    ssl_certificate_key /home/nikgl/projects/keycloak/certs/keycloak.test.local/keycloak.test.local.key;
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers off;
