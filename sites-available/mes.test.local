@@ -1,0 +1,67 @@
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name mes.test.local api.test.local;
+
+    return 301 https://$server_name$request_uri;
+}
+
+# Main HTTPS server — TLS termination only, forwards to Docker nginx
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name mes.test.local;
+
+    ssl_certificate     /home/nik/projects/ssl-certs/test.local.crt;
+    ssl_certificate_key /home/nik/projects/ssl-certs/test.local.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    access_log /var/log/nginx/mes.test.local.access.log;
+    error_log  /var/log/nginx/mes.test.local.error.log;
+
+    # Forward everything to the Docker nginx container.
+    # The container serves the Vue SPA and proxies /api/ and /hubs/ to the backend.
+    # HTTP_PORT in ~/projects/mes-docker/.env controls which host port it binds to (default 8090).
+    location / {
+        proxy_pass         http://localhost:8090;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade    $http_upgrade;
+        proxy_set_header   Connection $http_connection;
+        proxy_set_header   Host       $host;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_read_timeout 3600s;
+    }
+}
+
+# api.test.local — also forwards to the same Docker nginx
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.test.local;
+
+    ssl_certificate     /home/nik/projects/ssl-certs/test.local.crt;
+    ssl_certificate_key /home/nik/projects/ssl-certs/test.local.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    location / {
+        proxy_pass         http://localhost:8090;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+}
